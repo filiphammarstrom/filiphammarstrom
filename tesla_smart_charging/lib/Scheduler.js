@@ -1,135 +1,180 @@
 'use strict';
 
+/**
+ * Charging rate per 15-minute slot, depending on current battery level.
+ * These are approximations — actual rate tapers as battery fills.
+ */
+function slotChargePercent(batteryLevel) {
+  if (batteryLevel < 50) return 5.0;
+  if (batteryLevel < 70) return 3.0;
+  if (batteryLevel < 80) return 2.0;
+  return 1.5;
+}
+
+/**
+ * Estimates how many 15-min slots are needed to charge from `from` to `to` percent.
+ */
+function slotsNeeded(from, to) {
+  let slots = 0;
+  let level = from;
+  while (level < to && slots < 200) {
+    level += slotChargePercent(level);
+    slots++;
+  }
+  return slots;
+}
+
 class Scheduler {
   /**
    * @param {object} opts
-   * @param {number} opts.currentBattery     - Current battery level (0-100)
-   * @param {number} opts.minCharge          - Emergency threshold (default 20)
-   * @param {number} opts.defaultTarget      - Normal charge target (default 50)
-   * @param {number} opts.chargeRateKwh      - Charge rate in kW (default 11)
-   * @param {number} opts.batteryCapacityKwh - Battery capacity in kWh (default 75)
-   * @param {object|null} opts.nextTrip      - { departureTime: Date, targetPercent: number }
-   * @param {Array}  opts.combinedPrices     - From PriceManager.getCombinedPrices()
-   * @param {object} opts.priceManager       - PriceManager instance (for isCurrentHour, cheapestHours)
+   * @param {number}      opts.currentBattery   - Current battery %
+   * @param {number}      opts.floor            - Absolute minimum % (default 25)
+   * @param {number}      opts.normalTarget     - Normal sweet-spot target % (default 50)
+   * @param {object|null} opts.nextTrip         - { departureTime: Date, targetPercent: number }
+   * @param {object}      opts.currentSlot      - { time_start, time_end, price } for now
+   * @param {number}      opts.avg5day          - 5-day rolling average price (SEK/kWh)
+   * @param {Array}       opts.futurePrices     - Future price slots until end of tomorrow
+   * @param {object}      opts.priceManager     - PriceManager instance
    */
   constructor(opts) {
     this.currentBattery = opts.currentBattery;
-    this.minCharge = opts.minCharge || 20;
-    this.defaultTarget = opts.defaultTarget || 50;
-    this.chargeRateKwh = opts.chargeRateKwh || 11;
-    this.batteryCapacityKwh = opts.batteryCapacityKwh || 75;
+    this.floor = opts.floor ?? 25;
+    this.normalTarget = opts.normalTarget ?? 50;
     this.nextTrip = opts.nextTrip || null;
-    this.combinedPrices = opts.combinedPrices || [];
+    this.currentSlot = opts.currentSlot;
+    this.avg5day = opts.avg5day;
+    this.futurePrices = opts.futurePrices || [];
     this.priceManager = opts.priceManager;
   }
 
   /**
    * Main decision method.
-   * Returns { shouldCharge: bool, reason: string, cheapHours: Array }
+   * Returns { shouldCharge: boolean, target: number, reason: string }
    */
   decide() {
-    const now = new Date();
+    const battery = this.currentBattery;
 
-    // 1. Emergency charging
-    if (this.currentBattery <= this.minCharge) {
-      return {
-        shouldCharge: true,
-        reason: 'emergency',
-        cheapHours: [],
-      };
+    // --- 1. Hard floor: charge immediately if below minimum ---
+    if (battery < this.floor) {
+      return { shouldCharge: true, target: this.floor, reason: 'below_floor' };
     }
 
-    // 2. Trip mode
+    // --- 2. Determine base target from current price tier ---
+    const tier = this._priceTier();
+    const baseTarget = this._targetForTier(tier);
+
+    // --- 3. Trip mode ---
     if (this.nextTrip) {
-      const { departureTime, targetPercent } = this.nextTrip;
-      const msUntilDeparture = departureTime - now;
-      const hoursUntilDeparture = msUntilDeparture / 3600000;
+      const result = this._tripDecision(baseTarget, tier);
+      if (result) return result;
+    }
 
-      if (hoursUntilDeparture <= 0) {
-        // Trip is past, ignore
-      } else if (hoursUntilDeparture <= 48) {
-        const needed = Math.max(0, targetPercent - this.currentBattery);
-        const chargingHoursNeeded = this._hoursNeeded(needed);
+    // --- 4. Normal mode ---
+    if (battery >= baseTarget) {
+      return { shouldCharge: false, target: baseTarget, reason: `${tier.toLowerCase()}_target_reached` };
+    }
 
-        const windowPrices = this.combinedPrices.filter(
-          p => p.time_start >= now && p.time_start < departureTime
-        );
+    return { shouldCharge: true, target: baseTarget, reason: `${tier.toLowerCase()}_charging` };
+  }
 
-        if (windowPrices.length === 0) {
-          // No data in window, charge now to be safe
-          return { shouldCharge: true, reason: 'trip_no_data', cheapHours: [] };
-        }
+  // ---------------------------------------------------------------------------
+  // Trip logic
+  // ---------------------------------------------------------------------------
 
-        const cheapHours = this.priceManager.cheapestHours(
-          windowPrices,
-          Math.ceil(chargingHoursNeeded)
-        );
-        const isCurrentCheap = cheapHours.some(h =>
-          this.priceManager.isCurrentHour(h.time_start)
-        );
+  _tripDecision(baseTarget, tier) {
+    const { departureTime, targetPercent } = this.nextTrip;
+    const now = new Date();
+    const msUntil = departureTime - now;
 
-        return {
-          shouldCharge: isCurrentCheap,
-          reason: isCurrentCheap ? 'trip_cheap_hour' : 'trip_waiting_for_cheaper',
-          cheapHours,
-        };
+    if (msUntil <= 0) return null; // trip is past, ignore
+
+    const daysUntil = msUntil / 86400000;
+
+    // Last 24h before departure: schedule cheapest slots regardless of tier
+    if (daysUntil < 1) {
+      return this._lastNightDecision(targetPercent);
+    }
+
+    // 1–2 days before: allow up to 65% if cheap/very_cheap
+    // 2–4 days before: allow up to 60% if cheap/very_cheap
+    // 4+ days before: normal logic
+    let tripCeiling = null;
+    if (daysUntil <= 2) tripCeiling = 65;
+    else if (daysUntil <= 4) tripCeiling = 60;
+
+    if (!tripCeiling) return null; // 4+ days away, use normal logic
+
+    if (tier === 'EXPENSIVE' || tier === 'OK') {
+      // Trip doesn't change expensive/ok behaviour — use normal base target
+      if (this.currentBattery >= baseTarget) {
+        return { shouldCharge: false, target: baseTarget, reason: 'trip_waiting_cheaper' };
       }
+      return { shouldCharge: true, target: baseTarget, reason: `trip_${tier.toLowerCase()}_charging` };
     }
 
-    // 3. Normal mode
-    if (this.currentBattery >= this.defaultTarget) {
-      return {
-        shouldCharge: false,
-        reason: 'target_reached',
-        cheapHours: [],
-      };
+    // Cheap or very cheap: raise ceiling to tripCeiling
+    const target = Math.max(baseTarget, tripCeiling);
+    if (this.currentBattery >= target) {
+      return { shouldCharge: false, target, reason: 'trip_ceiling_reached' };
+    }
+    return { shouldCharge: true, target, reason: `trip_pre_charge_${daysUntil <= 2 ? '1_2d' : '3_4d'}` };
+  }
+
+  /**
+   * Last 24h: pick the cheapest N slots between now and departure.
+   * Charge if we're currently in one of those slots.
+   */
+  _lastNightDecision(tripTarget) {
+    const needed = slotsNeeded(this.currentBattery, tripTarget);
+
+    if (needed <= 0) {
+      return { shouldCharge: false, target: tripTarget, reason: 'trip_target_reached' };
     }
 
-    const needed = Math.max(0, this.defaultTarget - this.currentBattery);
-    const chargingHoursNeeded = this._hoursNeeded(needed);
-
-    // Use all available prices (up to 36h horizon)
-    const horizon = new Date(now.getTime() + 36 * 3600000);
-    const windowPrices = this.combinedPrices.filter(
-      p => p.time_start >= now && p.time_start < horizon
+    const windowPrices = this.futurePrices.filter(
+      p => p.time_start < this.nextTrip.departureTime
     );
 
-    if (windowPrices.length < chargingHoursNeeded) {
-      // Not enough data — charge now conservatively
-      return { shouldCharge: true, reason: 'insufficient_data', cheapHours: [] };
+    if (windowPrices.length === 0) {
+      // No data — charge now to be safe
+      return { shouldCharge: true, target: tripTarget, reason: 'trip_no_price_data' };
     }
 
-    // Safety: ensure we can charge before running out
-    const hoursUntilEmpty = this._hoursUntilEmpty();
-    const latestSafeStart = new Date(now.getTime() + (hoursUntilEmpty - chargingHoursNeeded) * 3600000);
-    const safePrices = windowPrices.filter(p => p.time_start <= latestSafeStart);
-
-    const poolPrices = safePrices.length >= chargingHoursNeeded ? safePrices : windowPrices;
-    const cheapHours = this.priceManager.cheapestHours(poolPrices, Math.ceil(chargingHoursNeeded));
-
-    const isCurrentCheap = cheapHours.some(h =>
-      this.priceManager.isCurrentHour(h.time_start)
-    );
+    const cheapSlots = this.priceManager.cheapestSlots(windowPrices, needed);
+    const chargingNow = this.currentSlot
+      ? cheapSlots.some(s => s.time_start.getTime() === this.currentSlot.time_start.getTime())
+      : false;
 
     return {
-      shouldCharge: isCurrentCheap,
-      reason: isCurrentCheap ? 'normal_cheap_hour' : 'normal_waiting_for_cheaper',
-      cheapHours,
+      shouldCharge: chargingNow,
+      target: tripTarget,
+      reason: chargingNow ? 'trip_cheap_slot' : 'trip_waiting_for_cheaper_slot',
+      scheduledSlots: cheapSlots.map(s => s.time_start.toISOString()),
     };
   }
 
-  /** How many kWh hours needed to charge `percentNeeded` percent */
-  _hoursNeeded(percentNeeded) {
-    const kwhNeeded = (percentNeeded / 100) * this.batteryCapacityKwh;
-    return kwhNeeded / this.chargeRateKwh;
+  // ---------------------------------------------------------------------------
+  // Price tier helpers
+  // ---------------------------------------------------------------------------
+
+  _priceTier() {
+    if (!this.currentSlot) return 'EXPENSIVE'; // no data → conservative
+    return this.priceManager.classifyPrice(this.currentSlot.price, this.avg5day);
   }
 
-  /** Approximate hours until battery drops to minCharge (assumes ~0 passive drain by default) */
-  _hoursUntilEmpty() {
-    const marginPercent = this.currentBattery - this.minCharge;
-    // Assume ~1% passive drain per 24h (negligible, but provides a safe upper bound)
-    return marginPercent * 24;
+  /**
+   * Base charging target for each price tier.
+   * Tesla app enforces the hard upper cap (e.g. 80%).
+   */
+  _targetForTier(tier) {
+    switch (tier) {
+      case 'VERY_CHEAP': return 55; // sweet spot ceiling, Tesla app cap handles the rest
+      case 'CHEAP':      return 50;
+      case 'OK':         return 35;
+      case 'EXPENSIVE':  return 25; // floor only — don't actively charge
+      default:           return 25;
+    }
   }
 }
 
-module.exports = Scheduler;
+module.exports = { Scheduler, slotsNeeded, slotChargePercent };
