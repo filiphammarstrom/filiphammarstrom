@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Hardened Runtime: allow execution of other processes (rsync, ssh) -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <false/>
+
+    <!-- Network access (SSH, SMB) -->
+    <key>com.apple.security.network.client</key>
+    <true/>
+
+    <!-- Read/write access to user-selected files (source folders) -->
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+
+    <!-- Downloads and Desktop access (common backup sources) -->
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+
+    <!-- Location access (needed for SSID on macOS 14+) -->
+    <key>com.apple.security.personal-information.location</key>
+    <true/>
+
+    <!-- Keychain access -->
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.filiphammarstrom.NASBackup</string>
+    </array>
+
+    <!-- Allow spawning child processes (rsync, ssh, mount_smbfs) -->
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <false/>
+
+    <!--
+        NOTE: Full Disk Access cannot be granted via entitlements — the user must grant it
+        manually in System Settings > Privacy & Security > Full Disk Access.
+        The app should prompt the user to do this on first launch if needed.
+    -->
+</dict>
+</plist>

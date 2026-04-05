@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- App metadata -->
+    <key>CFBundleName</key>
+    <string>NASBackup</string>
+    <key>CFBundleDisplayName</key>
+    <string>NASBackup</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.filiphammarstrom.NASBackup</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+
+    <!-- Menu bar only — no Dock icon -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- Required for macOS 13+ background task / Login Item support -->
+    <key>LSBackgroundOnly</key>
+    <false/>
+
+    <!-- Privacy descriptions -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>NASBackup needs your location to determine which Wi-Fi network you are connected to, so it can automatically start your backup when you arrive home.</string>
+
+    <!-- Full Disk Access prompt text (shown in System Settings) -->
+    <key>NSAppleEventsUsageDescription</key>
+    <string>NASBackup uses rsync to back up your files.</string>
+
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+
+    <!-- Supported platforms -->
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+
+    <!-- Main nib (not used — pure SwiftUI) -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+</dict>
+</plist>

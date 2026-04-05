@@ -1,0 +1,43 @@
+name: NASBackup
+options:
+  bundleIdPrefix: com.filiphammarstrom
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  NASBackup:
+    type: application
+    platform: macOS
+    sources:
+      - path: NASBackup
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.filiphammarstrom.NASBackup
+        INFOPLIST_FILE: NASBackup/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NASBackup/Resources/NASBackup.entitlements
+        ENABLE_HARDENED_RUNTIME: YES
+    dependencies:
+      - framework: CoreWLAN.framework
+        embed: false
+      - framework: Network.framework
+        embed: false
+
+  NASBackupTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: NASBackupTests
+    dependencies:
+      - target: NASBackup
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.filiphammarstrom.NASBackupTests
