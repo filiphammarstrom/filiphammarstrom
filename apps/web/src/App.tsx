@@ -13,6 +13,7 @@ import ProjectPage from './pages/ProjectPage'
 import AreaPage from './pages/AreaPage'
 import AssignedPage from './pages/AssignedPage'
 import WorkspacePage from './pages/WorkspacePage'
+import QuickAddWindowPage from './pages/QuickAddWindowPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((s) => s.user)
@@ -34,6 +35,8 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Electron floating quick-add window */}
+      <Route path="/quick-add" element={<QuickAddWindowPage />} />
       <Route path="/auth" element={<AuthPage />} />
       <Route
         path="/"

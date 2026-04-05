@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, HashRouter } from 'react-router-dom'
 import App from './App'
 import { SupabaseProvider } from './context/SupabaseContext'
 import './index.css'
@@ -12,14 +12,18 @@ const queryClient = new QueryClient({
   },
 })
 
+// Electron loads files via file:// protocol, which requires HashRouter.
+// Web (GitHub Pages) uses BrowserRouter.
+const Router = window.electronAPI ? HashRouter : BrowserRouter
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <Router>
       <QueryClientProvider client={queryClient}>
         <SupabaseProvider>
           <App />
         </SupabaseProvider>
       </QueryClientProvider>
-    </BrowserRouter>
+    </Router>
   </React.StrictMode>,
 )
