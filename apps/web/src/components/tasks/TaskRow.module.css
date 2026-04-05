@@ -1,0 +1,110 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.1s;
+  border-radius: var(--radius-sm);
+}
+
+.row:hover {
+  background: var(--bg-hover);
+  padding-left: 6px;
+  padding-right: 6px;
+  margin-left: -6px;
+  margin-right: -6px;
+}
+
+.row.blocked {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.row.completed .title {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.check {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  transition: background 0.15s, border-color 0.15s;
+  color: white;
+}
+
+.check:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.check.checking {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  display: block;
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+
+.dueDate {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.dueDate.overdue {
+  color: var(--red);
+}
+
+.blockedBadge {
+  font-size: 11px;
+  color: var(--text-placeholder);
+  background: var(--bg-card);
+  padding: 1px 6px;
+  border-radius: 100px;
+}
+
+.tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 100px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+}
+
+.assignee {
+  display: flex;
+  align-items: center;
+}
