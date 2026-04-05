@@ -14,7 +14,7 @@
   "category": "energy",
   "permissions": [
     "homey:manager:api",
-    "homey:app:com.teslamotors.tesla"
+    "homey:app:com.tesla.car"
   ],
   "images": {
     "small": "/assets/images/small.png",

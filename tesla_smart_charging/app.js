@@ -122,25 +122,39 @@ class TeslaSmartChargingApp extends Homey.App {
   // Tesla device
   // ---------------------------------------------------------------------------
 
-  async _getTeslaDevice() {
+  // App: "Tesla bil och energi" by Ronny Winkler (com.tesla.car)
+  // Car driver:     measure_battery (read battery %)
+  // Battery driver: charging_on (start/stop charging)
+
+  async _getTeslaCarDevice() {
     const devices = await this.homey.devices.getDevices();
-    const tesla = Object.values(devices).find(
-      d => d.driverUri && d.driverUri.includes('com.teslamotors.tesla')
+    const car = Object.values(devices).find(
+      d => d.driverUri && d.driverUri.includes('com.tesla.car') && d.driverId === 'car'
     );
-    if (!tesla) throw new Error('No Tesla device found');
-    return tesla;
+    if (!car) throw new Error('No Tesla car device found (com.tesla.car / driver: car)');
+    return car;
+  }
+
+  async _getTeslaBatteryDevice() {
+    const devices = await this.homey.devices.getDevices();
+    const bat = Object.values(devices).find(
+      d => d.driverUri && d.driverUri.includes('com.tesla.car') && d.driverId === 'battery'
+    );
+    if (!bat) throw new Error('No Tesla battery device found (com.tesla.car / driver: battery)');
+    return bat;
   }
 
   async _getTeslaBattery() {
-    const device = await this._getTeslaDevice();
-    const cap = device.capabilitiesObj && device.capabilitiesObj['measure_battery'];
-    if (!cap) throw new Error('Battery capability not found');
+    const car = await this._getTeslaCarDevice();
+    const cap = car.capabilitiesObj && car.capabilitiesObj['measure_battery'];
+    if (!cap) throw new Error('measure_battery capability not found on Tesla car device');
     return cap.value;
   }
 
   async _setTeslaCharging(enabled) {
-    const device = await this._getTeslaDevice();
-    await device.setCapabilityValue('charging_enabled', enabled);
+    const bat = await this._getTeslaBatteryDevice();
+    await bat.setCapabilityValue('charging_on', enabled);
+    this.log(`Tesla charging_on set to: ${enabled}`);
   }
 
   // ---------------------------------------------------------------------------
