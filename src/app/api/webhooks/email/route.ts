@@ -18,17 +18,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Obehörig" }, { status: 401 });
     }
 
-    const payload = await req.json() as {
-      from: string;
-      to: string;
-      subject: string;
-      html?: string;
-      text?: string;
-      attachments?: {
-        filename: string;
-        content: string;
-        contentType: string;
-      }[];
+    const raw = await req.json();
+
+    // Normalize payload — support both Postmark and generic formats
+    // Postmark uses: From, To, Subject, TextBody, HtmlBody, Attachments[].Name/.Content/.ContentType
+    // Generic uses:  from, to, subject, text, html, attachments[].filename/.content/.contentType
+    const payload = {
+      from:    raw.From    ?? raw.from    ?? "",
+      to:      raw.To      ?? raw.to      ?? "",
+      subject: raw.Subject ?? raw.subject ?? "",
+      html:    raw.HtmlBody ?? raw.html,
+      text:    raw.TextBody ?? raw.text,
+      attachments: (raw.Attachments ?? raw.attachments ?? []).map((a: Record<string, string>) => ({
+        filename:    a.Name        ?? a.filename    ?? "",
+        content:     a.Content     ?? a.content     ?? "",
+        contentType: a.ContentType ?? a.contentType ?? "",
+      })),
     };
 
     if (!payload.from || !payload.to) {
