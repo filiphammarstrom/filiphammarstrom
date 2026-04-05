@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Upload, Receipt } from "lucide-react";
 import type { ExpenseStatus } from "@/types/expense";
 import { EXPENSE_STATUS_LABELS, EXPENSE_SOURCE_LABELS } from "@/types/expense";
+import { InboundEmailBox } from "@/components/expenses/InboundEmailBox";
 
 const statusColors: Record<ExpenseStatus, string> = {
   PENDING_REVIEW: "bg-yellow-100 text-yellow-700",
@@ -63,6 +64,8 @@ export default async function ExpensesPage({
           Ladda upp kvitto
         </Link>
       </div>
+
+      <InboundEmailBox companyId={company.id} companyName={company.name} />
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">

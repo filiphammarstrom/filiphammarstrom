@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { validateCompanyAccess } from "@/lib/company-context";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { InboundEmailBox } from "@/components/expenses/InboundEmailBox";
 
 export default async function CompanySettingsPage({
   params,
@@ -104,6 +105,11 @@ export default async function CompanySettingsPage({
             För att redigera företagsinformation, kontakta systemadministratören eller använd API direkt.
           </p>
         </div>
+      </div>
+
+      <div className="mt-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Inkommande e-post</h2>
+        <InboundEmailBox companyId={company.id} companyName={company.name} />
       </div>
     </div>
   );
