@@ -103,7 +103,7 @@ export async function createInvoiceJournalEntry(
     });
   }
 
-  for (const [rate, group] of vatGroups) {
+  for (const [rate, group] of Array.from(vatGroups.entries())) {
     const revenueAccountNum = group.accountNumber ?? getRevenueAccountByRate(rate);
     const vatAccountNum = getVatAccountByRate(rate);
 

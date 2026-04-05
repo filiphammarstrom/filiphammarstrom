@@ -11,6 +11,7 @@ export interface OcrData {
   currency?: string;
   rawText?: string;
   confidence?: number;
+  [key: string]: unknown; // Allow JSON serialization
 }
 
 export interface ExpenseWithSupplier {
