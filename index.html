@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transkribera</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <div id="card">
+      <header>
+        <h1>Transkribera</h1>
+        <button id="btn-settings" aria-label="Inställningar" title="Inställningar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+      </header>
+
+      <!-- Settings Panel -->
+      <div id="settings-panel" hidden>
+        <div class="settings-group">
+          <label for="local-url">Lokal server-URL</label>
+          <input type="url" id="local-url" placeholder="http://localhost:8000" autocomplete="off">
+          <small>faster-whisper-server körs lokalt på din dator</small>
+        </div>
+        <div class="settings-group">
+          <label for="local-model">Lokal modell</label>
+          <input type="text" id="local-model" placeholder="Systran/faster-whisper-large-v3" autocomplete="off">
+        </div>
+        <div class="settings-group">
+          <label for="api-key">OpenAI API-nyckel <span class="label-hint">(för "Förbättra med AI")</span></label>
+          <div class="input-row">
+            <input type="password" id="api-key" placeholder="sk-..." autocomplete="off">
+            <button id="btn-toggle-key" type="button" class="btn-ghost-small">Visa</button>
+          </div>
+          <small class="warning-text">Sparas bara lokalt i din webbläsare. Använd inte på delade datorer.</small>
+        </div>
+        <div class="settings-actions">
+          <button id="btn-save-settings" class="btn-primary">Spara inställningar</button>
+          <button id="btn-close-settings" class="btn-ghost">Stäng</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div id="tabs" role="tablist">
+        <button id="tab-record-btn" role="tab" aria-selected="true" class="tab active">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+          Spela in
+        </button>
+        <button id="tab-upload-btn" role="tab" aria-selected="false" class="tab">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Ladda upp
+        </button>
+      </div>
+
+      <!-- Record Tab -->
+      <section id="tab-record" role="tabpanel">
+        <canvas id="wave-canvas" width="600" height="80"></canvas>
+        <div id="timer">00:00</div>
+        <div id="record-controls">
+          <button id="btn-record" class="btn-record" aria-label="Starta inspelning">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <button id="btn-stop" class="btn-stop" aria-label="Stoppa inspelning" disabled>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+            </svg>
+          </button>
+        </div>
+        <audio id="audio-playback" controls hidden></audio>
+      </section>
+
+      <!-- Upload Tab -->
+      <section id="tab-upload" role="tabpanel" hidden>
+        <div id="drop-zone" tabindex="0" role="button" aria-label="Ladda upp fil">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p>Dra hit en ljud- eller videofil</p>
+          <span>eller klicka för att bläddra</span>
+        </div>
+        <input type="file" id="file-input" accept="audio/*,video/*" hidden>
+        <p id="file-name"></p>
+      </section>
+
+      <!-- Options -->
+      <div id="options-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="timestamps-toggle">
+          <span>Tidsstämplar</span>
+        </label>
+      </div>
+
+      <!-- Transcribe Button -->
+      <button id="btn-transcribe" class="btn-primary btn-full" disabled>Transkribera</button>
+
+      <!-- Progress -->
+      <div id="progress" hidden>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+        <p id="progress-label">Transkriberar…</p>
+      </div>
+
+      <!-- Result -->
+      <section id="result" hidden>
+        <textarea id="result-text" readonly spellcheck="false" placeholder="Transkription visas här…"></textarea>
+        <div id="result-actions">
+          <button id="btn-copy" class="btn-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            Kopiera
+          </button>
+          <button id="btn-download" class="btn-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Ladda ner .txt
+          </button>
+          <button id="btn-improve" class="btn-ai">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            Förbättra med AI
+          </button>
+          <button id="btn-clear" class="btn-ghost">Ny transkription</button>
+        </div>
+      </section>
+
+      <!-- Error Banner -->
+      <div id="error-banner" role="alert" hidden></div>
+
+    </div><!-- /card -->
+  </div><!-- /app -->
+
+  <script src="app.js"></script>
+</body>
+</html>
